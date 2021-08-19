@@ -23,12 +23,10 @@ def get_zmtt_sub_info(page_url):
     res = requests.get(page_url,verify=False)
     if res.status_code == 200:
         bs = bs4.BeautifulSoup(res.content.decode('utf-8','ignore'),'html.parser')
-        nameselector = bs.select('body > section > div > div > div > div > div.md_tt.prel > h1')[0]
         downselector = bs.select('#down > a')[0]
-        name = nameselector.get('title')
         downurl = downselector.get('href')
-        return name,downurl
-    return '',''
+        return downurl
+    return ''
 
 def parse_zmtt_page_subs(page_url):
     urls = []
@@ -38,15 +36,14 @@ def parse_zmtt_page_subs(page_url):
         bs = bs4.BeautifulSoup(res.content.decode('utf-8','ignore'),'html.parser')
         selector = bs.select('body > section > div > div > div > div > table:nth-child(2) > tbody')
         activepage =  bs.select('body > section > div > div > div > div > div > ul > li.active > span')[0].string
-        currentpage = '第' + activepage + '页'
+        currentpage = activepage
         print(activepage)
         for item in selector[0].select('.search'):
             subtype = item.select('td.nobr.center')[3]
             subtime = item.select('td.nobr.center.lasttd')[0]
             sublan = item.select('td.nobr.center')[1]
-            subfile = item.select('td.w75pc a')[0].get('href')
-            infourl = concatUrl(zmtt_url, subfile)
-            subfilename,subdownurl = get_zmtt_sub_info(infourl)
+            subdownurl = item.select('td.w75pc a')[0].get('href')
+            subfilename = item.select('td.w75pc a')[0].getText()
             urls.append({'title':subfilename,'language':sublan.string,'type':subtype.string,'time':subtime.string,'downurl':subdownurl})
     #print(urls)
     return urls,currentpage
@@ -138,13 +135,16 @@ class zmttplugin(StellarPlayer.IStellarPlayerPlugin):
         self.search_word = self.player.getControlValue('main','search_edit')
         searchurl = zmtt_url + '/search/?q=' + urllib.parse.quote(self.search_word,encoding='utf-8') + self.getSearchType()
         print(f'url={searchurl}')
-        self.zms,self.cur_page  = parse_zmtt_page_subs(searchurl)
+        self.zms,activepage  = parse_zmtt_page_subs(searchurl)
+        self.pageIndex = int(activepage)
+        self.cur_page = '第' + activepage + '页'
         self.player.updateControlValue('main','list',self.zms)
         self.loading(True)
       
     def onDownClick(self, page, control, idx, *arg):     
         downurl = self.zms[idx]['downurl']
-        self.player.callWebbrowser(downurl)
+        subdownurl = get_zmtt_sub_info(concatUrl(zmtt_url, downurl))
+        self.player.callWebbrowser(subdownurl)
         
     def selectPage(self):
         self.cur_page = ''
@@ -152,7 +152,9 @@ class zmttplugin(StellarPlayer.IStellarPlayerPlugin):
         self.player.updateControlValue('main','list',self.zms)
         searchurl = zmtt_url + '/search/?q=' + urllib.parse.quote(self.search_word,encoding='utf-8') + self.getSearchType() + '&p=' +str(self.pageIndex) 
         print(f'url={searchurl}')
-        self.zms,self.cur_page = parse_zmtt_page_subs(searchurl)
+        self.zms,activepage = parse_zmtt_page_subs(searchurl)
+        self.pageIndex = int(activepage)
+        self.cur_page = '第' + activepage + '页'
         self.player.updateControlValue('main','list',self.zms)
                 
     def onClickFormerPage(self, *args):
