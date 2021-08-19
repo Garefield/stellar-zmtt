@@ -71,14 +71,18 @@ class zmttplugin(StellarPlayer.IStellarPlayerPlugin):
             {'type':'space','height':10},
             {'group':
                 [
-                    {'type':'edit','name':'search_edit','label':'搜索'},
+                    {'type':'edit','name':'search_edit','label':'搜索','width':0.4},
                     {'type':'button','name':'搜字幕','@click':'onSearch'},
                     {'group':
                         [
-                            {'type':'radio','name':'标题','width':0.2,'value':False},
-                            {'type':'radio','name':'全文','width':0.2,'value':True},
-                            {'type':'check','name':'模糊搜索','width':0.2,'value':True}
-                        ]
+                            {'type':'radio','name':'标题','value':False},
+                            {'type':'radio','name':'全文','value':True},
+                            {'type':'check','name':'模糊搜索','value':True},
+                            {'type':'radio','name':'相关性','value':True},
+                            {'type':'radio','name':'最新','value':False},
+                            {'type':'radio','name':'最老','value':False}
+                        ],
+                        'width':0.5
                     }
                 ]
                 ,'height':30
@@ -117,6 +121,9 @@ class zmttplugin(StellarPlayer.IStellarPlayerPlugin):
         hasetitle = self.player.getControlValue('main','标题')
         haseall = self.player.getControlValue('main','全文')
         hasem = self.player.getControlValue('main','模糊搜索')
+        haserelevance = self.player.getControlValue('main','相关性')
+        hasenew = self.player.getControlValue('main','最新')
+        haseold = self.player.getControlValue('main','最老')
         res = ''
         if hasetitle:
             res = '&f=title'
@@ -124,7 +131,12 @@ class zmttplugin(StellarPlayer.IStellarPlayerPlugin):
             res = '&f=_all'
         if hasem:
             res = res + '&m=yes'
-        res = res + '&s=relevance'
+        if haserelevance:
+            res = res + '&s=relevance'
+        elif hasenew:
+            res = res + '&s=newstime_DESC'
+        elif haseold:
+            res = res + '&s=newstime_ASC'
         return res
     
     def onSearch(self, *args):
